@@ -1,0 +1,69 @@
+code (with errors and incomplete)
+
+import tensorflow as tf
+from keras.applications import VGG16
+from tensorflow.keras import layers, models
+from tensorflow.keras.utils import ImageDataGenerator
+
+# Directorio del dataset
+directorio_dataset = 'ruta/a/tu/dataset' # Reemplaza con la ruta a tu dataset
+
+# Generador de datos para entrenamiento
+generador_entrenamiento = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+
+# Generador de datos para prueba
+generador_prueba = ImageDataGenerator(rescale=1./255)
+
+# Flujo de datos desde el directorio
+flujo_entrenamiento = generador_entrenamiento.flow_from_directory(
+    directorio_dataset,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+flujo_prueba = generador_prueba.flow_from_directory(
+    directorio_dataset,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+# Cargar el modelo VGG16 pre-entrenado
+base_model = VGG16(weights='imagenet', include_top=False, input_shape=(150, 150, 3))
+
+# Congelar las capas convolucionales
+base_model.trainable = False
+
+# Agregar capas personalizadas
+model = models.Sequential([
+    base_model,
+    layers.Flatten(),
+    layers.Dense(256, activation='relu'),
+    layers.Dropout(0.5),
+    layers.Dense(5, activation='softmax')
+])
+
+# Compilar el modelo
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Entrenar el modelo
+model.fit(
+    flujo_entrenamiento,
+    epochs=10,
+    validation_data=flujo_prueba
+)
+
+# Evaluar el modelo
+loss, accuracy = model.evaluate(flujo_prueba)
+print(f'Precisión: {accuracy}')
